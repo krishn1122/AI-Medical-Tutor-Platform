@@ -1,11 +1,288 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState, useEffect, useCallback } from 'react';
+import AvatarContainer from '@/components/AvatarContainer';
+import MCQInterface from '@/components/MCQInterface';
+import SessionControl from '@/components/SessionControl';
+import { medicalQuestions, getRandomQuestions, MCQQuestion } from '@/data/medicalQuestions';
+import { MockOpenAIService } from '@/services/openAIService';
+import { MockHeyGenService } from '@/services/heyGenService';
+import { useToast } from '@/hooks/use-toast';
+
+const SESSION_DURATION = 15 * 60; // 15 minutes in seconds
 
 const Index = () => {
+  // Session state
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(SESSION_DURATION);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Question state
+  const [questions, setQuestions] = useState<MCQQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [incorrectAnswers, setIncorrectAnswers] = useState<Array<{
+    question: string;
+    category: string;
+    userAnswer: string;
+  }>>([]);
+
+  // UI state
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [currentExplanation, setCurrentExplanation] = useState<string>('');
+  const [isWaitingForNext, setIsWaitingForNext] = useState(false);
+  const [avatarReady, setAvatarReady] = useState(false);
+
+  // Services
+  const [openAIService] = useState(new MockOpenAIService());
+  const [heyGenService] = useState(new MockHeyGenService());
+  const { toast } = useToast();
+
+  // Timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (isSessionActive && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            handleEndSession();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isSessionActive, timeLeft]);
+
+  const handleStartSession = useCallback(async () => {
+    const newSessionId = `session-${Date.now()}`;
+    setSessionId(newSessionId);
+    setIsSessionActive(true);
+    setTimeLeft(SESSION_DURATION);
+    
+    // Initialize questions
+    const sessionQuestions = getRandomQuestions(10);
+    setQuestions(sessionQuestions);
+    setCurrentQuestionIndex(0);
+    
+    // Reset counters
+    setQuestionsAnswered(0);
+    setCorrectAnswers(0);
+    setIncorrectAnswers([]);
+    setShowExplanation(false);
+    
+    toast({
+      title: "Session Started!",
+      description: "Your 15-minute medical simulation has begun. Good luck!",
+    });
+
+    // Initialize HeyGen service
+    await heyGenService.initializeStream();
+  }, [heyGenService, toast]);
+
+  const handleEndSession = useCallback(async () => {
+    setIsSessionActive(false);
+    
+    // Generate session summary
+    const accuracy = questionsAnswered > 0 ? Math.round((correctAnswers / questionsAnswered) * 100) : 0;
+    
+    toast({
+      title: "Session Complete!",
+      description: `You answered ${questionsAnswered} questions with ${accuracy}% accuracy. Great work!`,
+    });
+
+    // Provide adaptive feedback if there were multiple incorrect answers
+    if (incorrectAnswers.length >= 2) {
+      const feedback = await openAIService.generateAdaptiveFeedback(incorrectAnswers);
+      await heyGenService.sendMessage({
+        text: `Session complete! ${feedback}`,
+        type: 'encouragement'
+      });
+    } else {
+      await heyGenService.sendMessage({
+        text: "Excellent session! You're making great progress in your medical studies. I enjoyed working with you today!",
+        type: 'encouragement'
+      });
+    }
+
+    heyGenService.disconnect();
+  }, [questionsAnswered, correctAnswers, incorrectAnswers, openAIService, heyGenService, toast]);
+
+  const handleResetSession = useCallback(() => {
+    setIsSessionActive(false);
+    setTimeLeft(SESSION_DURATION);
+    setSessionId(null);
+    setQuestions([]);
+    setCurrentQuestionIndex(0);
+    setQuestionsAnswered(0);
+    setCorrectAnswers(0);
+    setIncorrectAnswers([]);
+    setShowExplanation(false);
+    setCurrentExplanation('');
+    setIsWaitingForNext(false);
+    setAvatarReady(false);
+    
+    heyGenService.disconnect();
+    
+    toast({
+      title: "Session Reset",
+      description: "Ready to start a new learning session!",
+    });
+  }, [heyGenService, toast]);
+
+  const handleAnswerSelect = useCallback(async (optionId: string, isCorrect: boolean) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return;
+
+    setQuestionsAnswered(prev => prev + 1);
+
+    if (isCorrect) {
+      setCorrectAnswers(prev => prev + 1);
+      
+      // Provide positive feedback through avatar
+      const encouragements = [
+        "Excellent! You're really getting the hang of this.",
+        "That's correct! Great clinical thinking.",
+        "Perfect! Your medical knowledge is showing.",
+        "Outstanding work! Let's keep this momentum going."
+      ];
+      const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+      
+      await heyGenService.provideFeedback(true, randomEncouragement);
+      
+      // Move to next question after a short delay
+      setTimeout(() => {
+        setIsWaitingForNext(true);
+      }, 2000);
+    } else {
+      // Track incorrect answer
+      const selectedOption = currentQuestion.options.find(opt => opt.id === optionId);
+      setIncorrectAnswers(prev => [...prev, {
+        question: currentQuestion.question,
+        category: currentQuestion.category,
+        userAnswer: selectedOption?.text || 'Unknown'
+      }]);
+
+      // Generate explanation
+      const explanation = await openAIService.generateExplanation(
+        currentQuestion.question,
+        selectedOption?.text || 'Unknown',
+        currentQuestion.options.find(opt => opt.isCorrect)?.text || 'Unknown',
+        currentQuestion.category
+      );
+
+      setCurrentExplanation(explanation);
+      setShowExplanation(true);
+
+      // Provide encouraging feedback through avatar
+      await heyGenService.provideFeedback(false, "That's not quite right, but great attempt! Let me explain the correct answer.");
+      
+      // Give explanation through avatar
+      setTimeout(async () => {
+        await heyGenService.giveExplanation(explanation);
+        setIsWaitingForNext(true);
+      }, 1000);
+    }
+  }, [questions, currentQuestionIndex, openAIService, heyGenService]);
+
+  const handleNextQuestion = useCallback(async () => {
+    setShowExplanation(false);
+    setCurrentExplanation('');
+    setIsWaitingForNext(false);
+
+    const nextIndex = currentQuestionIndex + 1;
+    
+    if (nextIndex < questions.length) {
+      setCurrentQuestionIndex(nextIndex);
+      
+      // Have avatar read the next question
+      const nextQuestion = questions[nextIndex];
+      const options = nextQuestion.options.map(opt => opt.text);
+      
+      setTimeout(async () => {
+        await heyGenService.speakQuestion(nextQuestion.question, options);
+      }, 1000);
+    } else {
+      // End session when all questions are answered
+      handleEndSession();
+    }
+  }, [currentQuestionIndex, questions, heyGenService, handleEndSession]);
+
+  const handleAvatarReady = useCallback(async () => {
+    setAvatarReady(true);
+    
+    if (questions.length > 0 && isSessionActive) {
+      const currentQuestion = questions[currentQuestionIndex];
+      const options = currentQuestion.options.map(opt => opt.text);
+      await heyGenService.speakQuestion(currentQuestion.question, options);
+    }
+  }, [questions, currentQuestionIndex, isSessionActive, heyGenService]);
+
+  const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gray-950 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            AI Medical Tutor Platform
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Interactive MCQ-based medical simulations with real-time AI guidance
+          </p>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Avatar Section */}
+          <div className="lg:col-span-5">
+            <AvatarContainer
+              isSessionActive={isSessionActive}
+              onAvatarReady={handleAvatarReady}
+              currentQuestion={currentQuestion?.question}
+              sessionId={sessionId}
+            />
+          </div>
+
+          {/* MCQ Interface */}
+          <div className="lg:col-span-5">
+            <MCQInterface
+              currentQuestion={currentQuestion}
+              onAnswerSelect={handleAnswerSelect}
+              timeLeft={timeLeft}
+              questionNumber={currentQuestionIndex + 1}
+              totalQuestions={questions.length}
+              showExplanation={showExplanation}
+              explanation={currentExplanation}
+              isWaitingForNext={isWaitingForNext}
+              onNextQuestion={handleNextQuestion}
+            />
+          </div>
+
+          {/* Session Control */}
+          <div className="lg:col-span-2">
+            <SessionControl
+              isSessionActive={isSessionActive}
+              onStartSession={handleStartSession}
+              onEndSession={handleEndSession}
+              onResetSession={handleResetSession}
+              timeLeft={timeLeft}
+              questionsAnswered={questionsAnswered}
+              correctAnswers={correctAnswers}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-gray-500 text-sm">
+          <p>Powered by HeyGen Streaming Avatar • OpenAI GPT • Medical Education Technology</p>
+        </div>
       </div>
     </div>
   );
