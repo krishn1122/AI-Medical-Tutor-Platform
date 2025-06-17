@@ -31,35 +31,35 @@ const SessionControl: React.FC<SessionControlProps> = ({
   const accuracy = questionsAnswered > 0 ? Math.round((correctAnswers / questionsAnswered) * 100) : 0;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-      <h2 className="text-white text-xl font-semibold mb-4">Session Control</h2>
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 h-fit">
+      <h2 className="text-white text-xl font-semibold mb-6">Session Control</h2>
       
-      {/* Session Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gray-900 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-blue-400">{formatTime(timeLeft)}</div>
+      {/* Session Stats - Fixed Grid Layout */}
+      <div className="grid grid-cols-1 gap-4 mb-6">
+        <div className="bg-gray-900 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-blue-400 mb-1">{formatTime(timeLeft)}</div>
           <div className="text-sm text-gray-400">Time Left</div>
         </div>
-        <div className="bg-gray-900 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-green-400">{questionsAnswered}</div>
+        <div className="bg-gray-900 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-green-400 mb-1">{questionsAnswered}</div>
           <div className="text-sm text-gray-400">Questions</div>
         </div>
-        <div className="bg-gray-900 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-purple-400">{correctAnswers}</div>
+        <div className="bg-gray-900 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-purple-400 mb-1">{correctAnswers}</div>
           <div className="text-sm text-gray-400">Correct</div>
         </div>
-        <div className="bg-gray-900 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-yellow-400">{accuracy}%</div>
+        <div className="bg-gray-900 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-yellow-400 mb-1">{accuracy}%</div>
           <div className="text-sm text-gray-400">Accuracy</div>
         </div>
       </div>
 
       {/* Control Buttons */}
-      <div className="space-y-3">
+      <div className="space-y-3 mb-6">
         {!isSessionActive ? (
           <Button
             onClick={onStartSession}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
           >
             <Play className="w-4 h-4 mr-2" />
             Start Session (15 min)
@@ -67,7 +67,7 @@ const SessionControl: React.FC<SessionControlProps> = ({
         ) : (
           <Button
             onClick={onEndSession}
-            className="w-full bg-red-600 hover:bg-red-700 text-white"
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-3"
           >
             <Square className="w-4 h-4 mr-2" />
             End Session
@@ -77,7 +77,7 @@ const SessionControl: React.FC<SessionControlProps> = ({
         <Button
           onClick={onResetSession}
           variant="outline"
-          className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+          className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 py-3"
         >
           <RotateCcw className="w-4 h-4 mr-2" />
           Reset
@@ -85,8 +85,8 @@ const SessionControl: React.FC<SessionControlProps> = ({
       </div>
 
       {/* Session Info */}
-      <div className="mt-6 pt-4 border-t border-gray-700">
-        <div className="text-sm text-gray-400 space-y-1">
+      <div className="pt-4 border-t border-gray-700">
+        <div className="text-sm text-gray-400 space-y-2">
           <p>• 15-minute focused learning session</p>
           <p>• Interactive MCQ-based medical simulations</p>
           <p>• Real-time AI tutor feedback</p>

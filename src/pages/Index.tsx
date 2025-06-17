@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import AvatarContainer from '@/components/AvatarContainer';
 import MCQInterface from '@/components/MCQInterface';
 import SessionControl from '@/components/SessionControl';
 import { medicalQuestions, getRandomQuestions, MCQQuestion } from '@/data/medicalQuestions';
-import { MockOpenAIService } from '@/services/openAIService';
-import { MockHeyGenService } from '@/services/heyGenService';
+import { RealOpenAIService } from '@/services/realOpenAIService';
+import { RealHeyGenService } from '@/services/realHeyGenService';
 import { useToast } from '@/hooks/use-toast';
 
 const SESSION_DURATION = 15 * 60; // 15 minutes in seconds
@@ -33,9 +32,12 @@ const Index = () => {
   const [isWaitingForNext, setIsWaitingForNext] = useState(false);
   const [avatarReady, setAvatarReady] = useState(false);
 
-  // Services
-  const [openAIService] = useState(new MockOpenAIService());
-  const [heyGenService] = useState(new MockHeyGenService());
+  // Services - using real services now
+  const [openAIService] = useState(new RealOpenAIService());
+  const [heyGenService] = useState(new RealHeyGenService({
+    avatarId: '1732323320',
+    voiceId: 'EXAVITQu4vr4xnSDxMaL' // Sarah - female voice
+  }));
   const { toast } = useToast();
 
   // Timer effect
@@ -241,7 +243,7 @@ const Index = () => {
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Avatar Section */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 h-[600px]">
             <AvatarContainer
               isSessionActive={isSessionActive}
               onAvatarReady={handleAvatarReady}
@@ -251,7 +253,7 @@ const Index = () => {
           </div>
 
           {/* MCQ Interface */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 h-[600px]">
             <MCQInterface
               currentQuestion={currentQuestion}
               onAnswerSelect={handleAnswerSelect}
