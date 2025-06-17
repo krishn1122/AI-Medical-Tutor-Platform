@@ -32,11 +32,11 @@ const Index = () => {
   const [isWaitingForNext, setIsWaitingForNext] = useState(false);
   const [avatarReady, setAvatarReady] = useState(false);
 
-  // Services - using real services now
+  // Services - using real services now with correct voice ID
   const [openAIService] = useState(new RealOpenAIService());
   const [heyGenService] = useState(new RealHeyGenService({
     avatarId: '1732323320',
-    voiceId: 'EXAVITQu4vr4xnSDxMaL' // Sarah - female voice
+    voiceId: 'EXAVITQu4vr4xnSDxMaL' // Your specified female voice ID
   }));
   const { toast } = useToast();
 
@@ -228,20 +228,20 @@ const Index = () => {
   const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-white mb-2">
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
             AI Medical Tutor Platform
           </h1>
-          <p className="text-gray-400 text-lg">
-            Interactive MCQ-based medical simulations with real-time AI guidance
+          <p className="text-gray-400 text-xl max-w-3xl mx-auto">
+            Interactive MCQ-based medical simulations with real-time AI guidance and streaming avatar
           </p>
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Avatar Section */}
           <div className="lg:col-span-5 h-[600px]">
             <AvatarContainer
@@ -249,6 +249,7 @@ const Index = () => {
               onAvatarReady={handleAvatarReady}
               currentQuestion={currentQuestion?.question}
               sessionId={sessionId}
+              heyGenService={heyGenService}
             />
           </div>
 
@@ -282,8 +283,10 @@ const Index = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-gray-500 text-sm">
-          <p>Powered by HeyGen Streaming Avatar • OpenAI GPT • Medical Education Technology</p>
+        <div className="mt-12 text-center text-gray-500 text-sm">
+          <p className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+            Powered by HeyGen Streaming Avatar • OpenAI GPT-4 • Advanced Medical Education Technology
+          </p>
         </div>
       </div>
     </div>

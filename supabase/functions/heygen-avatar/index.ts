@@ -17,10 +17,12 @@ serve(async (req) => {
 
   try {
     const { action, data } = await req.json();
+    console.log('HeyGen request:', { action, data });
 
     switch (action) {
       case 'create_session':
-        const sessionResponse = await fetch(`${HEYGEN_BASE_URL}/streaming/create_session`, {
+        // Create streaming avatar session
+        const sessionResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.create`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${HEYGEN_API_KEY}`,
@@ -28,10 +30,27 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             avatar_id: data.avatarId,
-            voice_id: data.voiceId,
-            quality: 'high'
+            voice: {
+              voice_id: data.voiceId,
+              rate: 1.0,
+              emotion: "Excited"
+            },
+            version: "v2",
+            video_encoding: "H264",
+            session_timeout: 600
           })
         });
+
+        if (!sessionResponse.ok) {
+          const errorText = await sessionResponse.text();
+          console.error('HeyGen session error response:', errorText);
+          return new Response(JSON.stringify({ 
+            error: `HeyGen API error: ${sessionResponse.status} - ${errorText}` 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
         const sessionData = await sessionResponse.json();
         console.log('HeyGen session created:', sessionData);
@@ -41,22 +60,56 @@ serve(async (req) => {
         });
 
       case 'speak':
-        const speakResponse = await fetch(`${HEYGEN_BASE_URL}/streaming/speak`, {
+        // Send text to avatar for speaking
+        const speakResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.task`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${HEYGEN_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            session_id: data.sessionId,
             text: data.text,
-            task_type: data.type || 'question'
+            task_type: "talk",
+            task_mode: "sync"
           })
         });
+
+        if (!speakResponse.ok) {
+          const errorText = await speakResponse.text();
+          console.error('HeyGen speak error response:', errorText);
+          return new Response(JSON.stringify({ 
+            error: `HeyGen speak API error: ${speakResponse.status} - ${errorText}` 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
         const speakData = await speakResponse.json();
         console.log('HeyGen speak response:', speakData);
 
         return new Response(JSON.stringify(speakData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'close_session':
+        // Close the streaming session
+        const closeResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.stop`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${HEYGEN_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session_id: data.sessionId
+          })
+        });
+
+        const closeData = await closeResponse.json();
+        console.log('HeyGen session closed:', closeData);
+
+        return new Response(JSON.stringify(closeData), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
@@ -68,7 +121,10 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('HeyGen API error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: `Server error: ${error.message}`,
+      details: error.toString()
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

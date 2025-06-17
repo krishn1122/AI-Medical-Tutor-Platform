@@ -14,6 +14,8 @@ export interface AvatarMessage {
 export class RealHeyGenService {
   private config: HeyGenConfig;
   private isConnected: boolean = false;
+  private sessionId: string | null = null;
+  private streamUrl: string | null = null;
 
   constructor(config: HeyGenConfig) {
     this.config = config;
@@ -38,8 +40,23 @@ export class RealHeyGenService {
         return false;
       }
 
+      if (data?.error) {
+        console.error('HeyGen API error:', data.error);
+        return false;
+      }
+
       console.log('HeyGen session created:', data);
+      
+      // Store session details
+      this.sessionId = data?.session_id || data?.data?.session_id;
+      this.streamUrl = data?.url || data?.data?.url;
       this.isConnected = true;
+      
+      if (!this.sessionId) {
+        console.error('No session ID received from HeyGen');
+        return false;
+      }
+
       return true;
     } catch (error) {
       console.error('HeyGen initialization failed:', error);
@@ -48,8 +65,8 @@ export class RealHeyGenService {
   }
 
   async sendMessage(message: AvatarMessage): Promise<boolean> {
-    if (!this.isConnected) {
-      console.warn('Avatar not connected');
+    if (!this.isConnected || !this.sessionId) {
+      console.warn('Avatar not connected or no session ID');
       return false;
     }
 
@@ -60,6 +77,7 @@ export class RealHeyGenService {
         body: {
           action: 'speak',
           data: {
+            sessionId: this.sessionId,
             text: message.text,
             type: message.type
           }
@@ -68,6 +86,11 @@ export class RealHeyGenService {
 
       if (error) {
         console.error('Failed to send message to avatar:', error);
+        return false;
+      }
+
+      if (data?.error) {
+        console.error('HeyGen speak API error:', data.error);
         return false;
       }
 
@@ -108,12 +131,37 @@ export class RealHeyGenService {
     });
   }
 
-  disconnect(): void {
+  async disconnect(): Promise<void> {
+    if (this.sessionId) {
+      try {
+        await supabase.functions.invoke('heygen-avatar', {
+          body: {
+            action: 'close_session',
+            data: {
+              sessionId: this.sessionId
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error closing HeyGen session:', error);
+      }
+    }
+    
     this.isConnected = false;
+    this.sessionId = null;
+    this.streamUrl = null;
     console.log('HeyGen service disconnected');
   }
 
   isStreamConnected(): boolean {
     return this.isConnected;
+  }
+
+  getStreamUrl(): string | null {
+    return this.streamUrl;
+  }
+
+  getSessionId(): string | null {
+    return this.sessionId;
   }
 }
