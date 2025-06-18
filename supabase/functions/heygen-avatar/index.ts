@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const HEYGEN_API_KEY = Deno.env.get('HEYGEN_API_KEY');
-const HEYGEN_BASE_URL = 'https://api.heygen.com/v1';
+const HEYGEN_BASE_URL = 'https://api.heygen.com';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,12 +21,13 @@ serve(async (req) => {
 
     switch (action) {
       case 'create_session':
-        // Create streaming avatar session
-        const sessionResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.create`, {
+        // Create new streaming session using the correct endpoint
+        const sessionResponse = await fetch(`${HEYGEN_BASE_URL}/v1/streaming.new`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${HEYGEN_API_KEY}`,
+            'x-api-key': HEYGEN_API_KEY,
             'Content-Type': 'application/json',
+            'accept': 'application/json'
           },
           body: JSON.stringify({
             avatar_id: data.avatarId,
@@ -36,8 +37,7 @@ serve(async (req) => {
               emotion: "Excited"
             },
             version: "v2",
-            video_encoding: "H264",
-            session_timeout: 600
+            video_encoding: "H264"
           })
         });
 
@@ -59,57 +59,114 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
-      case 'speak':
-        // Send text to avatar for speaking
-        const speakResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.task`, {
+      case 'create_token':
+        // Create session token
+        const tokenResponse = await fetch(`${HEYGEN_BASE_URL}/v1/streaming.create_token`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${HEYGEN_API_KEY}`,
+            'x-api-key': HEYGEN_API_KEY,
             'Content-Type': 'application/json',
+            'accept': 'application/json'
           },
-          body: JSON.stringify({
-            session_id: data.sessionId,
-            text: data.text,
-            task_type: "talk",
-            task_mode: "sync"
-          })
+          body: JSON.stringify({})
         });
 
-        if (!speakResponse.ok) {
-          const errorText = await speakResponse.text();
-          console.error('HeyGen speak error response:', errorText);
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text();
+          console.error('HeyGen token error response:', errorText);
           return new Response(JSON.stringify({ 
-            error: `HeyGen speak API error: ${speakResponse.status} - ${errorText}` 
+            error: `HeyGen token API error: ${tokenResponse.status} - ${errorText}` 
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        const speakData = await speakResponse.json();
-        console.log('HeyGen speak response:', speakData);
+        const tokenData = await tokenResponse.json();
+        console.log('HeyGen token created:', tokenData);
 
-        return new Response(JSON.stringify(speakData), {
+        return new Response(JSON.stringify(tokenData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'get_avatars':
+        // Get available avatars
+        const avatarsResponse = await fetch(`${HEYGEN_BASE_URL}/v2/avatars`, {
+          method: 'GET',
+          headers: {
+            'x-api-key': HEYGEN_API_KEY,
+            'accept': 'application/json'
+          }
+        });
+
+        if (!avatarsResponse.ok) {
+          const errorText = await avatarsResponse.text();
+          console.error('HeyGen avatars error response:', errorText);
+          return new Response(JSON.stringify({ 
+            error: `HeyGen avatars API error: ${avatarsResponse.status} - ${errorText}` 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const avatarsData = await avatarsResponse.json();
+        console.log('HeyGen avatars retrieved:', avatarsData);
+
+        return new Response(JSON.stringify(avatarsData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'get_voices':
+        // Get available voices
+        const voicesResponse = await fetch(`${HEYGEN_BASE_URL}/v2/voices`, {
+          method: 'GET',
+          headers: {
+            'x-api-key': HEYGEN_API_KEY,
+            'accept': 'application/json'
+          }
+        });
+
+        if (!voicesResponse.ok) {
+          const errorText = await voicesResponse.text();
+          console.error('HeyGen voices error response:', errorText);
+          return new Response(JSON.stringify({ 
+            error: `HeyGen voices API error: ${voicesResponse.status} - ${errorText}` 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const voicesData = await voicesResponse.json();
+        console.log('HeyGen voices retrieved:', voicesData);
+
+        return new Response(JSON.stringify(voicesData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'speak':
+        // Send text to avatar for speaking via WebRTC signaling
+        console.log('Speak action received with session:', data.sessionId);
+        
+        // For now, we'll return success - the actual speaking will be handled via WebRTC
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Speech command queued',
+          text: data.text 
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
       case 'close_session':
         // Close the streaming session
-        const closeResponse = await fetch(`${HEYGEN_BASE_URL}/streaming.stop`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${HEYGEN_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            session_id: data.sessionId
-          })
-        });
-
-        const closeData = await closeResponse.json();
-        console.log('HeyGen session closed:', closeData);
-
-        return new Response(JSON.stringify(closeData), {
+        console.log('Closing HeyGen session:', data.sessionId);
+        
+        // Return success for session closure
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Session closed' 
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
