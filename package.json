@@ -1,8 +1,35 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "private": true,
-  "version": "0.0.0",
+  "name": "ai-medical-tutor-platform",
+  "private": false,
+  "version": "1.0.0",
   "type": "module",
+  "description": "An innovative AI-powered medical education platform featuring interactive MCQ simulations with real-time streaming avatar feedback",
+  "keywords": [
+    "medical-education",
+    "ai-tutor",
+    "react",
+    "typescript",
+    "heygen",
+    "openai",
+    "medical-simulation",
+    "interactive-learning",
+    "mcq",
+    "streaming-avatar"
+  ],
+  "author": {
+    "name": "Your Name",
+    "email": "your-email@example.com",
+    "url": "https://github.com/yourusername"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nextlpc-interactive-demo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/nextlpc-interactive-demo/issues"
+  },
+  "homepage": "https://github.com/yourusername/nextlpc-interactive-demo#readme",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
