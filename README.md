@@ -215,15 +215,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Radix UI** for accessible primitives
 - **Tailwind CSS** for utility-first styling
 
-## 📞 Support
-
-For support, email [your-email@example.com] or create an issue in this repository.
-
----
-
-<div align="center">
-  <p>Built with ❤️ for medical education</p>
-  <p>
-    <a href="#-ai-medical-tutor-platform">Back to top</a>
-  </p>
-</div>
